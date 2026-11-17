@@ -111,9 +111,9 @@ are excluded by `.gitignore`.
 
 ## Deploy to Vercel
 
-Vercel uses the Flask entrypoint declared in `pyproject.toml` and serves the
-browser assets from `public/static/`. Deploy from this repository root using the
-Vercel CLI or a connected Git repository.
+Vercel uses the root-level `app.py` entrypoint, installs Python dependencies
+from `requirements.txt`, and serves browser assets from `public/static/`. Deploy
+from this repository root using the Vercel CLI or a connected Git repository.
 
 Vercel functions use temporary writable storage. GradePath places SQLite there
 by default when running on Vercel, so saved analyses are **not durable** and may
