@@ -109,6 +109,19 @@ Open [http://127.0.0.1:5000](http://127.0.0.1:5000). The database tables are
 created automatically on startup. The local database and virtual environment
 are excluded by `.gitignore`.
 
+## Deploy to Vercel
+
+Vercel uses the Flask entrypoint declared in `pyproject.toml` and serves the
+browser assets from `public/static/`. Deploy from this repository root using the
+Vercel CLI or a connected Git repository.
+
+Vercel functions use temporary writable storage. GradePath places SQLite there
+by default when running on Vercel, so saved analyses are **not durable** and may
+disappear between function instances or restarts. Set `GRADEPATH_DB_PATH` only
+when you have a writable database location; for persistent analysis history,
+migrate the SQLite layer to a managed database before using the app with real
+student data.
+
 ## Tests
 
 The test suite uses Flask's test client and synthetic CSV fixtures:

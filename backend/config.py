@@ -5,6 +5,7 @@ Contains paths, feature lists, valid value ranges, and grade cutoff rules.
 
 import os
 import json
+import tempfile
 
 # Base paths: anchored to the project root (one level up from backend/)
 BACKEND_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -12,7 +13,12 @@ PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
 
 MODEL_DIR = os.path.join(PROJECT_ROOT, "model")
 MODEL_PATH = os.path.join(MODEL_DIR, "student_performance_modelv2.joblib")
-DB_PATH = os.path.join(PROJECT_ROOT, "gradepath.db")
+if os.environ.get("GRADEPATH_DB_PATH"):
+    DB_PATH = os.environ["GRADEPATH_DB_PATH"]
+elif os.environ.get("VERCEL"):
+    DB_PATH = os.path.join(tempfile.gettempdir(), "gradepath.db")
+else:
+    DB_PATH = os.path.join(PROJECT_ROOT, "gradepath.db")
 
 # Fallback or specific cutoffs file
 CUTOFFS_FILE_V2 = os.path.join(MODEL_DIR, "grade_cutoffsv2.json")

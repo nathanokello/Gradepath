@@ -40,8 +40,14 @@ except ImportError:
 app = Flask(
     __name__,
     template_folder=os.path.join(PROJECT_ROOT, "templates"),
-    static_folder=os.path.join(PROJECT_ROOT, "static"),
+    static_folder=(
+        None if os.environ.get("VERCEL")
+        else os.path.join(PROJECT_ROOT, "static")
+    ),
 )
+if os.environ.get("VERCEL"):
+    # Vercel serves these URLs directly from the public directory.
+    app.add_url_rule("/static/<path:filename>", endpoint="static", build_only=True)
 app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
 # Initialize the SQLite database on startup
