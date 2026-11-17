@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GradePath — Student Performance Prediction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ---- Brand tokens (adjust to exact hex from your kit) ---- */
+    --rich-black: #04100D;
+    --dark-green: #0A2621;
+    --bangladesh-green: #0C3D31;
+    --mountain-meadow: #1CC99C;
+    --caribbean-green: #00D982;
+    --anti-flash-white: #F1F7F5;
+    --pine: #0E362E;
+    --forest: #0F4A3C;
+    --frog: #3D8361;
+    --mint: #6FCF97;
+    --stone: #7C9089;
+    --pistachio: #A9C9A6;
+
+    --bg: var(--rich-black);
+    --surface: var(--dark-green);
+    --surface-raised: var(--bangladesh-green);
+    --border: rgba(241, 247, 245, 0.10);
+    --border-strong: rgba(241, 247, 245, 0.18);
+    --text: var(--anti-flash-white);
+    --text-muted: rgba(241, 247, 245, 0.60);
+    --text-faint: rgba(241, 247, 245, 0.38);
+    --accent: var(--caribbean-green);
+    --accent-soft: rgba(0, 217, 130, 0.14);
+    --accent-2: var(--mountain-meadow);
+
+    --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+
+    color-scheme: dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+  }
+
+  *, *::before, *::after { box-sizing: inherit; }
+
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100svh;
+  }
+
+  a { color: inherit; }
+
+  /* ---------- App shell ---------- */
+  .shell {
+    display: grid;
+    grid-template-columns: 248px 1fr;
+    min-height: 100svh;
+  }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { position: sticky; top: 0; z-index: 20; }
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 22px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  @media (max-width: 860px) {
+    .sidebar {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+    }
+    .sidebar-nav { flex-direction: row; overflow-x: auto; }
+    .sidebar-brand { display: none; }
+    .sidebar-foot { display: none; }
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px;
+  }
+
+  .brand-mark {
+    width: 30px; height: 30px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--caribbean-green), var(--mountain-meadow));
+    display: grid;
+    place-items: center;
+    color: var(--rich-black);
+    font-weight: 800;
+    font-size: 15px;
+    flex: none;
+  }
+
+  .brand-name {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .brand-sub {
+    font-size: 11.5px;
+    color: var(--text-faint);
+  }
+
+  nav.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: relative;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    text-align: left;
+    width: 100%;
+    position: relative;
+    font-family: inherit;
+  }
+
+  .nav-item svg { width: 18px; height: 18px; flex: none; opacity: 0.85; }
+
+  .nav-item[aria-current="page"] {
+    color: var(--text);
+    background: var(--accent-soft);
+    anchor-name: --active-nav;
+  }
+
+  .nav-item:not([aria-current="page"]):hover {
+    background: rgba(241, 247, 245, 0.05);
+    color: var(--text);
+  }
+
+  /* animated indicator tethered to the active nav item */
+  .sidebar-nav::before {
+    content: "";
+    position: absolute;
+    background: var(--accent);
+    border-radius: 3px;
+    inline-size: 3px;
+    position-anchor: --active-nav;
+    inset-block-start: anchor(top);
+    inset-block-end: anchor(bottom);
+    inset-inline-start: -16px;
+    @media (prefers-reduced-motion: no-preference) {
+      transition: inset .25s ease;
+    }
+  }
+  @supports not (position-anchor: auto) {
+    .sidebar-nav::before { display: none; }
+    .nav-item[aria-current="page"] { border-left: 3px solid var(--accent); padding-left: 9px; }
+  }
+
+  @media (max-width: 860px) {
+    .sidebar-nav::before { display: none; }
+    .nav-item[aria-current="page"] { border-bottom: 2px solid var(--accent); border-radius: 8px 8px 0 0; }
+  }
+
+  .sidebar-foot {
+    margin-top: auto;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    background: rgba(241, 247, 245, 0.04);
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.5;
+  }
+
+  /* ---------- Main ---------- */
+  main {
+    padding: 28px clamp(18px, 4vw, 44px) 60px;
+    max-width: 1180px;
+    width: 100%;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-head {
+    margin-bottom: 26px;
+  }
+  .page-head h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  .page-head p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14.5px;
+    max-width: 60ch;
+  }
+
+  /* ---------- Cards / surfaces ---------- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+  }
+
+  .panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .panel-sub {
+    font-size: 13px;
+    color: var(--text-faint);
+    margin: 0 0 18px;
+  }
+
+  /* ---------- Home page: form + result ---------- */
+  .home-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .home-grid { grid-template-columns: 1fr; } }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 560px) { .field-grid { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field label {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .field input[type="number"],
+  .field select {
+    background: rgba(4, 16, 13, 0.55);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+  }
+  .field input:focus-visible,
+  .field select:focus-visible,
+  .toggle input:focus-visible + .toggle-track {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .field-range-row { display: flex; align-items: center; gap: 10px; }
+  .field-range-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+  .field-range-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent-2);
+    min-width: 34px;
+    text-align: right;
+  }
+
+  .toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 4px;
+  }
+  @media (max-width: 560px) { .toggle-grid { grid-template-columns: 1fr; } }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+  }
+  .toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .toggle-track {
+    width: 34px; height: 20px;
+    border-radius: 99px;
+    background: rgba(241,247,245,0.14);
+    position: relative;
+    flex: none;
+    transition: background .15s;
+  }
+  .toggle-track::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--text);
+    transition: transform .15s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+  .toggle input:checked + .toggle-track::after { transform: translateX(14px); background: var(--rich-black); }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; border: none; }
+
+  .btn {
+    appearance: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 11px 18px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--rich-black);
+  }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Result panel ---------- */
+  .result-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 40px 18px;
+    color: var(--text-faint);
+    font-size: 13.5px;
+  }
+  .result-empty svg { width: 34px; height: 34px; opacity: .5; }
+
+  .result-live { display: flex; flex-direction: column; gap: 18px; }
+
+  .gpa-hero {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 18px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(160deg, var(--accent-soft), transparent);
+    border: 1px solid var(--border);
+  }
+  .gpa-value { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; }
+  .gpa-label { font-size: 12px; color: var(--text-muted); }
+
+  .grade-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: var(--rich-black);
+    font-weight: 800;
+    font-size: 20px;
+  }
+
+  .meter { height: 6px; border-radius: 99px; background: rgba(241,247,245,0.10); overflow: hidden; }
+  .meter > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+
+  .factor-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .factor-row:last-child { border-bottom: none; }
+  .factor-row strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Upload page ---------- */
+  .dropzone {
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 46px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    color: var(--text-muted);
+    background: rgba(241,247,245,0.02);
+  }
+  .dropzone svg { width: 36px; height: 36px; color: var(--accent-2); }
+  .dropzone strong { color: var(--text); font-size: 15px; }
+  .dropzone small { font-size: 12.5px; color: var(--text-faint); }
+
+  .type-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--accent-soft);
+    color: var(--accent);
+    width: fit-content;
+  }
+
+  .file-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+  }
+  .file-row .file-name { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+  .file-row .file-meta { color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; }
+
+  .report-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 700px) { .report-grid { grid-template-columns: 1fr 1fr; } }
+
+  .stat-card {
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: rgba(241,247,245,0.02);
+  }
+  .stat-card .stat-value { font-size: 22px; font-weight: 700; }
+  .stat-card .stat-label { font-size: 11.5px; color: var(--text-faint); margin-top: 3px; }
+
+  /* ---------- Dashboard / tabs ---------- */
+  .tabbar {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .tab-btn {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 10px 4px;
+    margin-right: 22px;
+    cursor: pointer;
+    position: relative;
+  }
+  .tab-btn[aria-selected="true"] {
+    color: var(--text);
+    anchor-name: --active-tab;
+  }
+  .tabbar::after {
+    content: "";
+    position: absolute;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+    position-anchor: --active-tab;
+    inset-inline-start: anchor(left);
+    inset-inline-end: anchor(right);
+    inset-block-end: -1px;
+    @media (prefers-reduced-motion: no-preference) {
+      transition: inset .2s ease;
+    }
+  }
+  @supports not (position-anchor: auto) {
+    .tabbar::after { display: none; }
+    .tab-btn[aria-selected="true"] { border-bottom: 2px solid var(--accent); }
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .dash-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 700px) { .kpi-row { grid-template-columns: 1fr 1fr; } }
+
+  .kpi-card {
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .kpi-card .kpi-value { font-size: 24px; font-weight: 700; }
+  .kpi-card .kpi-label { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+  .kpi-trend { font-size: 11.5px; color: var(--mint); margin-top: 6px; }
+
+  .bar-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 6px 0; }
+  .bar-row .bar-label { width: 118px; color: var(--text-muted); flex: none; }
+  .bar-track { flex: 1; height: 9px; border-radius: 99px; background: rgba(241,247,245,0.08); overflow: hidden; }
+  .bar-track > span { display: block; height: 100%; border-radius: 99px; background: var(--accent-2); }
+  .bar-row .bar-value { width: 40px; text-align: right; font-family: var(--font-mono); color: var(--text-faint); flex: none; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+  table.pred-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.pred-table th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--text-faint);
+    font-size: 11.5px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.pred-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  table.pred-table td.strong { color: var(--text); font-weight: 600; }
+  .grade-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--rich-black);
+  }
+
+  .confusion-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+    margin-top: 6px;
+  }
+  .confusion-cell {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--rich-black);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">GP</div>
+      <div>
+        <div class="brand-name">GradePath</div>
+        <div class="brand-sub">Performance predictor</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Primary">
+      <button class="nav-item" data-page="home" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>
+        Predict
+      </button>
+      <button class="nav-item" data-page="upload">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11"/><path d="m8 7 4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        Upload dataset
+      </button>
+      <button class="nav-item" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="12" width="4" height="8" rx="1"/><rect x="10" y="7" width="4" height="13" rx="1"/><rect x="16.5" y="3.5" width="4" height="16.5" rx="1"/></svg>
+        Dashboard
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      Model: Random Forest &middot; R&sup2; on hold-out test set &middot; last trained on the current dataset
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ============ HOME ============ -->
+    <section class="page active" id="page-home">
+      <div class="page-head">
+        <h1>Predict a student's performance</h1>
+        <p>Enter a student's study habits and support factors to estimate their GPA and letter grade.</p>
+      </div>
+
+      <div class="home-grid">
+        <form class="panel" id="predict-form">
+          <div class="panel-title">Student factors</div>
+          <div class="panel-sub">Fields mirror the data used to train the model.</div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="f-study">Weekly study time (hours)</label>
+              <div class="field-range-row">
+                <input type="range" id="f-study" min="0" max="20" step="0.5" value="9">
+                <span class="field-range-value" id="f-study-val">9.0</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="f-absences">Absences (this term)</label>
+              <input type="number" id="f-absences" min="0" max="29" value="4">
+            </div>
+            <div class="field">
+              <label for="f-support">Parental support</label>
+              <select id="f-support">
+                <option>None</option><option>Low</option><option selected>Moderate</option><option>High</option><option>Very high</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="f-education">Parental education</label>
+              <select id="f-education">
+                <option>None</option><option>High school</option><option selected>Some college</option><option>Bachelor's</option><option>Higher</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <div class="panel-sub" style="margin-bottom:10px;">Support &amp; activities</div>
+          <div class="toggle-grid">
+            <label class="toggle">Tutoring <input type="checkbox" checked><span class="toggle-track"></span></label>
+            <label class="toggle">Extracurricular <input type="checkbox"><span class="toggle-track"></span></label>
+            <label class="toggle">Sports <input type="checkbox" checked><span class="toggle-track"></span></label>
+            <label class="toggle">Music <input type="checkbox"><span class="toggle-track"></span></label>
+            <label class="toggle">Volunteering <input type="checkbox"><span class="toggle-track"></span></label>
+          </div>
+
+          <hr class="divider">
+
+          <div style="display:flex; gap:10px;">
+            <button type="submit" class="btn btn-primary">Predict GPA</button>
+            <button type="reset" class="btn btn-ghost">Reset</button>
+          </div>
+        </form>
+
+        <div class="panel" id="result-panel">
+          <div class="panel-title">Prediction</div>
+          <div class="panel-sub">Appears here once you submit the form.</div>
+
+          <div class="result-empty" id="result-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 17v-6M15 17V9M12 17v-3"/><rect x="3" y="3.5" width="18" height="17" rx="2.5"/></svg>
+            No prediction yet — fill in the form and submit.
+          </div>
+
+          <div class="result-live" id="result-live" style="display:none;">
+            <div class="gpa-hero">
+              <div>
+                <div class="gpa-label">Predicted GPA</div>
+                <div class="gpa-value">3.42</div>
+              </div>
+              <div class="grade-badge">B</div>
+            </div>
+
+            <div>
+              <div class="factor-row"><span>Model confidence range</span><strong>3.20 &ndash; 3.64</strong></div>
+              <div class="factor-row"><span>Dominant factor</span><strong>Absences</strong></div>
+            </div>
+
+            <div>
+              <div class="panel-sub" style="margin-bottom:8px;">What influenced this prediction</div>
+              <div class="factor-row"><span>Absences (4)</span><strong>Strong ↓ effect</strong></div>
+              <div class="meter" style="margin-bottom:10px;"><span style="width:82%"></span></div>
+              <div class="factor-row"><span>Study time (9.0 hrs)</span><strong>Mild ↑ effect</strong></div>
+              <div class="meter" style="margin-bottom:10px;"><span style="width:24%"></span></div>
+              <div class="factor-row"><span>Parental support</span><strong>Mild ↑ effect</strong></div>
+              <div class="meter"><span style="width:19%"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ UPLOAD ============ -->
+    <section class="page" id="page-upload">
+      <div class="page-head">
+        <h1>Upload a dataset</h1>
+        <p>Drop a CSV or Excel file to clean, analyze, and predict for a whole class at once.</p>
+      </div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="dropzone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 4v11"/><path d="m8 7 4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          <strong>Drag and drop a file, or click to browse</strong>
+          <small>CSV or XLSX &middot; must include the trained feature columns</small>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-title">class_roster_t2.csv</div>
+        <div class="panel-sub" style="margin-bottom:14px;">Detected automatically after upload</div>
+
+        <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+          <span class="type-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+            Type 2 &middot; includes GPA &amp; grade
+          </span>
+        </div>
+
+        <div class="file-row" style="margin-bottom:14px;">
+          <span class="file-name">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+            class_roster_t2.csv
+          </span>
+          <span class="file-meta">63 rows &middot; 14 columns</span>
+        </div>
+
+        <div class="panel-sub" style="margin-bottom:10px;">Cleaning report</div>
+        <div class="report-grid">
+          <div class="stat-card"><div class="stat-value">63 → 60</div><div class="stat-label">Rows in / out</div></div>
+          <div class="stat-card"><div class="stat-value">3</div><div class="stat-label">Duplicates removed</div></div>
+          <div class="stat-card"><div class="stat-value">22</div><div class="stat-label">Values fixed</div></div>
+          <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">Missing columns</div></div>
+        </div>
+
+        <hr class="divider">
+        <button class="btn btn-primary">Run predictions &amp; open dashboard</button>
+      </div>
+    </section>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section class="page" id="page-dashboard">
+      <div class="page-head">
+        <h1>Visualization dashboard</h1>
+        <p>Results for <strong style="color:var(--text)">class_roster_t2.csv</strong> — 60 students analyzed.</p>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="kpi-value">2.87</div><div class="kpi-label">Average predicted GPA</div></div>
+        <div class="kpi-card"><div class="kpi-value">72.9%</div><div class="kpi-label">Grade-level accuracy</div><div class="kpi-trend">on hold-out test set</div></div>
+        <div class="kpi-card"><div class="kpi-value">14</div><div class="kpi-label">Students at risk (D/F)</div></div>
+        <div class="kpi-card"><div class="kpi-value">0.81</div><div class="kpi-label">R&sup2; score</div></div>
+      </div>
+
+      <div class="tabbar" role="tablist" aria-label="Dashboard sections">
+        <button class="tab-btn" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+        <button class="tab-btn" role="tab" data-tab="features">Feature analysis</button>
+        <button class="tab-btn" role="tab" data-tab="predictions">Predictions</button>
+      </div>
+
+      <!-- Overview -->
+      <div class="tab-panel active" id="tab-overview">
+        <div class="dash-grid">
+          <div class="panel">
+            <div class="panel-title">GPA distribution</div>
+            <div class="panel-sub">Predicted GPA across the uploaded class</div>
+            <svg viewBox="0 0 340 140" width="100%" height="140" role="img" aria-label="Histogram of predicted GPA">
+              <g fill="var(--mountain-meadow)">
+                <rect x="10"  y="90"  width="26" height="45"/>
+                <rect x="44"  y="60"  width="26" height="75"/>
+                <rect x="78"  y="30"  width="26" height="105"/>
+                <rect x="112" y="15"  width="26" height="120"/>
+                <rect x="146" y="45"  width="26" height="90"/>
+                <rect x="180" y="70"  width="26" height="65"/>
+                <rect x="214" y="95"  width="26" height="40"/>
+                <rect x="248" y="110" width="26" height="25"/>
+                <rect x="282" y="122" width="26" height="13"/>
+              </g>
+              <line x1="0" y1="135" x2="340" y2="135" stroke="var(--border)" />
+            </svg>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Grade breakdown</div>
+            <div class="panel-sub">Predicted letter grades</div>
+            <div class="bar-row"><span class="bar-label">A</span><div class="bar-track"><span style="width:11%; background:#00D982;"></span></div><span class="bar-value">7</span></div>
+            <div class="bar-row"><span class="bar-label">B</span><div class="bar-track"><span style="width:31%; background:#1CC99C;"></span></div><span class="bar-value">18</span></div>
+            <div class="bar-row"><span class="bar-label">C</span><div class="bar-track"><span style="width:35%; background:#3D8361;"></span></div><span class="bar-value">21</span></div>
+            <div class="bar-row"><span class="bar-label">D</span><div class="bar-track"><span style="width:15%; background:#6FCF97;"></span></div><span class="bar-value">9</span></div>
+            <div class="bar-row"><span class="bar-label">F</span><div class="bar-track"><span style="width:8%; background:#7C9089;"></span></div><span class="bar-value">5</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature analysis -->
+      <div class="tab-panel" id="tab-features">
+        <div class="dash-grid">
+          <div class="panel">
+            <div class="panel-title">Feature importance</div>
+            <div class="panel-sub">Random Forest — relative contribution to GPA prediction</div>
+            <div class="bar-row"><span class="bar-label">Absences</span><div class="bar-track"><span style="width:86%"></span></div><span class="bar-value">.86</span></div>
+            <div class="bar-row"><span class="bar-label">Study time</span><div class="bar-track"><span style="width:6%"></span></div><span class="bar-value">.06</span></div>
+            <div class="bar-row"><span class="bar-label">Parental support</span><div class="bar-track"><span style="width:4%"></span></div><span class="bar-value">.04</span></div>
+            <div class="bar-row"><span class="bar-label">Tutoring</span><div class="bar-track"><span style="width:2%"></span></div><span class="bar-value">.02</span></div>
+            <div class="bar-row"><span class="bar-label">Other 5 features</span><div class="bar-track"><span style="width:2%"></span></div><span class="bar-value">.02</span></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Absences vs. GPA</div>
+            <div class="panel-sub">Strongest single relationship found (r = &minus;0.92)</div>
+            <svg viewBox="0 0 300 150" width="100%" height="150" role="img" aria-label="Scatter plot of absences against GPA, showing a strong downward trend">
+              <line x1="20" y1="10" x2="20" y2="130" stroke="var(--border)"/>
+              <line x1="20" y1="130" x2="290" y2="130" stroke="var(--border)"/>
+              <g fill="var(--caribbean-green)" opacity="0.85">
+                <circle cx="35" cy="25" r="3"/><circle cx="48" cy="35" r="3"/><circle cx="55" cy="20" r="3"/>
+                <circle cx="80" cy="45" r="3"/><circle cx="95" cy="55" r="3"/><circle cx="110" cy="50" r="3"/>
+                <circle cx="130" cy="70" r="3"/><circle cx="145" cy="65" r="3"/><circle cx="160" cy="80" r="3"/>
+                <circle cx="180" cy="95" r="3"/><circle cx="195" cy="100" r="3"/><circle cx="215" cy="110" r="3"/>
+                <circle cx="235" cy="115" r="3"/><circle cx="255" cy="120" r="3"/><circle cx="270" cy="125" r="3"/>
+              </g>
+              <line x1="30" y1="20" x2="280" y2="128" stroke="var(--mint)" stroke-width="1.5" stroke-dasharray="3 3"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Predictions -->
+      <div class="tab-panel" id="tab-predictions">
+        <div class="panel">
+          <div class="panel-title">Per-student results</div>
+          <div class="panel-sub">Predicted vs. actual — this file includes real GPA to compare against</div>
+          <table class="pred-table">
+            <thead><tr><th>Student</th><th>Absences</th><th>Study hrs</th><th>Predicted GPA</th><th>Predicted grade</th><th>Actual grade</th></tr></thead>
+            <tbody>
+              <tr><td>#0142</td><td>3</td><td>12.5</td><td class="strong">3.61</td><td><span class="grade-chip" style="background:#00D982;">A</span></td><td><span class="grade-chip" style="background:#00D982;">A</span></td></tr>
+              <tr><td>#0143</td><td>9</td><td>7.0</td><td class="strong">2.94</td><td><span class="grade-chip" style="background:#3D8361;">C</span></td><td><span class="grade-chip" style="background:#1CC99C;">B</span></td></tr>
+              <tr><td>#0144</td><td>22</td><td>4.5</td><td class="strong">1.67</td><td><span class="grade-chip" style="background:#7C9089;">F</span></td><td><span class="grade-chip" style="background:#7C9089;">F</span></td></tr>
+              <tr><td>#0145</td><td>11</td><td>15.0</td><td class="strong">2.71</td><td><span class="grade-chip" style="background:#3D8361;">C</span></td><td><span class="grade-chip" style="background:#3D8361;">C</span></td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:14px;">
+            <button class="btn btn-ghost">Download full results (CSV)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // ---- sidebar page routing ----
+  const navItems = document.querySelectorAll('.nav-item');
+  const pages = document.querySelectorAll('.page');
+  navItems.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navItems.forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'page');
+      pages.forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + btn.dataset.page).classList.add('active');
+    });
+  });
+
+  // ---- dashboard tabs ----
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabPanels = document.querySelectorAll('.tab-panel');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.setAttribute('aria-selected', 'false'));
+      btn.setAttribute('aria-selected', 'true');
+      tabPanels.forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---- study time range readout ----
+  const studyRange = document.getElementById('f-study');
+  const studyVal = document.getElementById('f-study-val');
+  studyRange.addEventListener('input', () => {
+    studyVal.textContent = parseFloat(studyRange.value).toFixed(1);
+  });
+
+  // ---- mock predict submit (demo only, no real model here) ----
+  const form = document.getElementById('predict-form');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    document.getElementById('result-empty').style.display = 'none';
+    document.getElementById('result-live').style.display = 'flex';
+  });
+</script>
+</body>
+</html>

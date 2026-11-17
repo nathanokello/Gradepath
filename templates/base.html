@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}GradePath — Student Performance Prediction{% endblock %}</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Core App Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!-- Plotly.js from official CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="shell">
+  <!-- Shared Left Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">GP</div>
+      <div>
+        <div class="brand-name">GradePath</div>
+        <div class="brand-sub">Performance predictor</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Primary Navigation">
+      <a href="{{ url_for('home') }}" class="nav-item {% if active_page == 'predict' %}active{% endif %}" {% if active_page == 'predict' %}aria-current="page"{% endif %}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M4 11.5 12 4l8 7.5"/>
+          <path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/>
+        </svg>
+        Predict
+      </a>
+      <a href="{{ url_for('upload_page') }}" class="nav-item {% if active_page == 'upload' %}active{% endif %}" {% if active_page == 'upload' %}aria-current="page"{% endif %}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 4v11"/>
+          <path d="m8 7 4-4 4 4"/>
+          <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+        </svg>
+        Upload dataset
+      </a>
+      <a href="{{ url_for('dashboard_latest') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3.5" y="12" width="4" height="8" rx="1"/>
+          <rect x="10" y="7" width="4" height="13" rx="1"/>
+          <rect x="16.5" y="3.5" width="4" height="16.5" rx="1"/>
+        </svg>
+        Dashboard
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      Model: Random Forest Regressor &middot; R&sup2; 0.9306 &middot; scikit-learn 1.6.1
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
+

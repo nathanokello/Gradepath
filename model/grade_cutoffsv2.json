@@ -1,0 +1,39 @@
+{
+  "features": [
+    "StudyTimeWeekly",
+    "Absences",
+    "Tutoring",
+    "ParentalSupport",
+    "ParentalEducation",
+    "Extracurricular",
+    "Sports",
+    "Music",
+    "Volunteering"
+  ],
+  "target": "GPA",
+  "grade_bands": {
+    "A": "GPA >= 3.5",
+    "B": "3.0 <= GPA < 3.5",
+    "C": "2.5 <= GPA < 3.0",
+    "D": "2.0 <= GPA < 2.5",
+    "F": "GPA < 2.0"
+  },
+  "grade_class_map": {
+    "0": "A",
+    "1": "B",
+    "2": "C",
+    "3": "D",
+    "4": "F"
+  },
+  "model_metrics": {
+    "r2": 0.9306215199411838,
+    "mae": 0.18694989561586622,
+    "rmse": 0.23952616858792966,
+    "grade_accuracy": 0.732776617954071
+  },
+  "baseline_metrics": {
+    "r2": 0.83807124972983,
+    "mae": 0.29163615109715274,
+    "rmse": 0.36593382829874355
+  }
+}

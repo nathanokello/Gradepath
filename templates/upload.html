@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Dataset — GradePath{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Upload a dataset</h1>
+  <p>Drop a CSV or Excel file to clean, analyze, and predict for a whole class at once.</p>
+</div>
+
+<!-- Upload Alert Messages -->
+<div id="upload-error" class="alert alert-danger" style="display: none;"></div>
+
+<!-- Drag & Drop Zone -->
+<div class="panel" style="margin-bottom: 20px;">
+  <div class="dropzone" id="dropzone">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+      <path d="M12 4v11"/>
+      <path d="m8 7 4-4 4 4"/>
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+    </svg>
+    <strong>Drag and drop a file, or click to browse</strong>
+    <small>CSV or XLSX &middot; max 5 MB &middot; must include required behavioural features</small>
+    <input type="file" id="file-input" accept=".csv, .xlsx" style="display: none;">
+  </div>
+</div>
+
+<!-- Upload / Processing Progress State -->
+<div class="panel" id="upload-loading" style="display: none; text-align: center; padding: 36px 20px;">
+  <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Processing dataset...</div>
+  <div style="color: var(--text-muted); font-size: 13.5px;">Cleaning schema, resolving anomalies, and computing model predictions.</div>
+</div>
+
+<!-- Cleaning Report & Summary Panel (Displayed after successful upload) -->
+<div class="panel" id="upload-report-panel" style="display: none; margin-bottom: 18px;">
+  <div class="panel-title" id="rep-filename">dataset.csv</div>
+  <div class="panel-sub" style="margin-bottom: 14px;">Detected and cleaned automatically</div>
+
+  <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+    <span class="type-pill" id="rep-type-pill">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M20 6 9 17l-5-5"/>
+      </svg>
+      <span id="rep-type-text">Type 1</span>
+    </span>
+  </div>
+
+  <div class="file-row" style="margin-bottom: 14px;">
+    <span class="file-name">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 3v5h5"/>
+      </svg>
+      <span id="rep-meta-name">file.csv</span>
+    </span>
+    <span class="file-meta" id="rep-meta-details">-- rows &middot; -- columns</span>
+  </div>
+
+  <div class="panel-sub" style="margin-bottom: 10px;">Cleaning report</div>
+  <div class="report-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="rep-rows-in-out">-- &rarr; --</div>
+      <div class="stat-label">Rows in / out</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="rep-dups">0</div>
+      <div class="stat-label">Duplicates removed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="rep-fixed">0</div>
+      <div class="stat-label">Values fixed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="rep-missing">0</div>
+      <div class="stat-label">Missing required cols</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <a href="#" class="btn btn-primary" id="btn-open-dashboard">
+      Run predictions &amp; open dashboard &rarr;
+    </a>
+    <span style="font-size: 12.5px; color: var(--text-faint);">Predictions saved to local SQLite database</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}
+

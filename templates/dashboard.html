@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — GradePath{% endblock %}
+
+{% block content %}
+{% if not analysis %}
+<!-- Empty State when no analyses exist yet in database -->
+<div class="page-head">
+  <h1>Performance Dashboard</h1>
+  <p>No dataset analyses found yet.</p>
+</div>
+
+<div class="panel" style="text-align: center; padding: 60px 20px;">
+  <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">No datasets have been analyzed</div>
+  <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">
+    Upload a class roster (CSV or XLSX) to see automated predictions and interactive cohort analytics.
+  </p>
+  <a href="{{ url_for('upload_page') }}" class="btn btn-primary">
+    Upload a Dataset &rarr;
+  </a>
+</div>
+
+{% else %}
+
+<!-- Dashboard Top Header & Past Analyses Dropdown -->
+<div class="dash-header-row">
+  <div>
+    <h1 style="font-size: 26px; font-weight: 700; margin: 0 0 6px;">Visualization dashboard</h1>
+    <p style="margin: 0; color: var(--text-muted); font-size: 14.5px;">
+      Results for <strong style="color: var(--text);">{{ analysis.filename }}</strong> &middot; 
+      {{ analysis.rows_out }} students analyzed on {{ analysis.created_at }}.
+      <span class="type-pill" style="margin-left: 8px;">
+        Type {{ analysis.data_type }} {% if analysis.data_type == 2 %}&middot; Evaluated{% endif %}
+      </span>
+    </p>
+  </div>
+
+  <div>
+    <label for="select-analysis" style="font-size: 12px; color: var(--text-faint); display: block; margin-bottom: 4px;">
+      Reopen past analysis:
+    </label>
+    <select id="select-analysis" class="select-analysis" onchange="window.location.href='/dashboard/' + this.value">
+      {% for item in all_analyses %}
+        <option value="{{ item.id }}" {% if item.id == analysis.id %}selected{% endif %}>
+          #{{ item.id }} &ndash; {{ item.filename }} ({{ item.created_at }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+<!-- KPI Cards Row -->
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-value">{{ "%.2f"|format(analysis.avg_gpa) }}</div>
+    <div class="kpi-label">Average predicted GPA</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-value">{{ analysis.rows_out }}</div>
+    <div class="kpi-label">Total students analyzed</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-value" style="color: {% if at_risk_count > 0 %}var(--mint){% else %}var(--text){% endif %};">
+      {{ at_risk_count }}
+    </div>
+    <div class="kpi-label">Students at risk (D or F)</div>
+  </div>
+
+  <div class="kpi-card">
+    {% if analysis.data_type == 2 and analysis.grade_accuracy is not none %}
+      <div class="kpi-value">{{ "%.1f"|format(analysis.grade_accuracy) }}%</div>
+      <div class="kpi-label">Grade accuracy (this file)</div>
+      <div class="kpi-trend">vs 66% baseline</div>
+    {% else %}
+      <div class="kpi-value">0.93</div>
+      <div class="kpi-label">Model benchmark R&sup2;</div>
+      <div class="kpi-trend">73.3% test accuracy</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tabbar" role="tablist" aria-label="Dashboard sections">
+  <button class="tab-btn active" role="tab" data-tab="overview" aria-selected="true">
+    Overview
+  </button>
+  <button class="tab-btn" role="tab" data-tab="features" aria-selected="false">
+    Feature analysis
+  </button>
+  <button class="tab-btn" role="tab" data-tab="predictions" aria-selected="false">
+    Predictions &amp; Evaluation
+  </button>
+</div>
+
+<!-- Tab 1: Overview -->
+<div class="tab-panel active" id="tab-overview">
+  <div class="dash-grid">
+    <div class="panel">
+      <div class="panel-title">GPA distribution</div>
+      <div class="panel-sub">Predicted GPA histogram across the uploaded dataset</div>
+      <div id="chart-gpa-dist" class="chart-container"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Grade breakdown</div>
+      <div class="panel-sub">Cohort count by predicted letter grade (A – F)</div>
+      <div id="chart-grade-counts" class="chart-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 2: Feature Analysis -->
+<div class="tab-panel" id="tab-features">
+  <div class="dash-grid">
+    <div class="panel">
+      <div class="panel-title">Global feature importance</div>
+      <div class="panel-sub">Random Forest relative weighting across all behavioural inputs</div>
+      <div id="chart-importance" class="chart-container"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Absences vs. Predicted GPA</div>
+      <div class="panel-sub">Strongest single relationship identified in data (r = &minus;0.92)</div>
+      <div id="chart-absences-gpa" class="chart-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 3: Predictions & Comparison -->
+<div class="tab-panel" id="tab-predictions">
+  {% if analysis.data_type == 2 %}
+  <!-- Evaluation Charts for Type 2 -->
+  <div class="dash-grid" style="margin-bottom: 20px;">
+    <div class="panel">
+      <div class="panel-title">Grade Confusion Matrix</div>
+      <div class="panel-sub">Actual vs. Predicted letter grade classifications</div>
+      <div id="chart-confusion" class="chart-container"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Actual vs. Predicted GPA</div>
+      <div class="panel-sub">Scatter plot with ideal 45&deg; line of agreement</div>
+      <div id="chart-actual-vs-pred" class="chart-container"></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Predictions Table -->
+  <div class="panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <div class="panel-title">Per-student predictions</div>
+        <div class="panel-sub" style="margin-bottom: 0;">
+          Showing all {{ predictions|length }} student rows from this dataset.
+        </div>
+      </div>
+      <a href="{{ url_for('download_csv', analysis_id=analysis.id) }}" class="btn btn-ghost">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download results (CSV)
+      </a>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="pred-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Absences</th>
+            <th>Study hrs/wk</th>
+            <th>Tutoring</th>
+            <th>Parent Support</th>
+            <th>Predicted GPA</th>
+            <th>Predicted Grade</th>
+            {% if analysis.data_type == 2 %}
+              <th>Actual GPA</th>
+              <th>Actual Grade</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in predictions %}
+          <tr>
+            <td style="font-family: var(--font-mono);">#{{ "%04d"|format(row.student_row) }}</td>
+            <td>{{ row.absences }}</td>
+            <td>{{ "%.1f"|format(row.study_time) }}</td>
+            <td>{% if row.tutoring == 1 %}Yes{% else %}No{% endif %}</td>
+            <td>
+              {% if row.parental_support == 0 %}None
+              {% elif row.parental_support == 1 %}Low
+              {% elif row.parental_support == 2 %}Moderate
+              {% elif row.parental_support == 3 %}High
+              {% else %}Very high{% endif %}
+            </td>
+            <td class="strong">{{ "%.2f"|format(row.predicted_gpa) }}</td>
+            <td>
+              <span class="grade-chip grade-{{ row.predicted_grade }}">{{ row.predicted_grade }}</span>
+            </td>
+            {% if analysis.data_type == 2 %}
+              <td>{{ "%.2f"|format(row.actual_gpa) if row.actual_gpa is not none else 'N/A' }}</td>
+              <td>
+                {% if row.actual_grade %}
+                  <span class="grade-chip grade-{{ row.actual_grade }}">{{ row.actual_grade }}</span>
+                {% else %}
+                  &ndash;
+                {% endif %}
+              </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Static Facts / Model Benchmark Reference Card -->
+  <div class="benchmark-card">
+    <strong>Model Training Benchmarks:</strong>
+    Trained on 2,392 student records using Random Forest Regressor with balanced class sample weights.
+    Benchmark performance on hold-out test set: R&sup2; = 0.9306, MAE = 0.1869, RMSE = 0.2395, Grade Accuracy = 73.3% (against 66% majority baseline).
+    Absences is the dominant predictor (correlation r = &minus;0.92). The model exhibits highest accuracy on Grade F and lowest on Grade A due to class rarity.
+  </div>
+</div>
+
+<!-- Store current analysis ID for async Chart API fetching -->
+<script>
+  window.CURRENT_ANALYSIS_ID = {{ analysis.id }};
+  window.IS_TYPE_2 = {{ 'true' if analysis.data_type == 2 else 'false' }};
+</script>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if analysis %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endif %}
+{% endblock %}
+
