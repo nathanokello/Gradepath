@@ -8,3 +8,4 @@ env/
 # Local application data
 gradepath.db
 Student_performance_data _.csv
+.vercel
