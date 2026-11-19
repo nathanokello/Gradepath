@@ -115,6 +115,9 @@ Vercel uses the root-level `app.py` entrypoint, installs Python dependencies
 from `requirements.txt`, and serves browser assets from `public/static/`. Deploy
 from this repository root using the Vercel CLI or a connected Git repository.
 
+The app is live at <https://grade-path-999-ecru.vercel.app/>. Each push to
+`main` triggers a new deployment through the connected Git repository.
+
 Vercel functions use temporary writable storage. GradePath places SQLite there
 by default when running on Vercel, so saved analyses are **not durable** and may
 disappear between function instances or restarts. Set `GRADEPATH_DB_PATH` only
