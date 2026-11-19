@@ -1,0 +1,8 @@
+{
+  "framework": "python",
+  "functions": {
+    "app.py": {
+      "maxDuration": 60
+    }
+  }
+}
