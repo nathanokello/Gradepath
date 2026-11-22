@@ -119,11 +119,21 @@ The app is live at <https://grade-path-999-ecru.vercel.app/>. Each push to
 `main` triggers a new deployment through the connected Git repository.
 
 Vercel functions use temporary writable storage. GradePath places SQLite there
-by default when running on Vercel, so saved analyses are **not durable** and may
-disappear between function instances or restarts. Set `GRADEPATH_DB_PATH` only
-when you have a writable database location; for persistent analysis history,
-migrate the SQLite layer to a managed database before using the app with real
-student data.
+by default when running on Vercel, so the database copy of an analysis is **not
+durable** and may disappear between function instances or restarts. To keep the
+dashboard populated anyway, every upload is also mirrored into Flask's signed
+session cookie, which travels with the browser. The session copy is what the
+dashboard, chart API and CSV export read first, so a just-uploaded analysis
+stays visible across instances.
+
+The cookie has a strict size budget (3,800 bytes). When a payload does not
+fit, GradePath automatically drops the columns the dashboard never renders,
+then evicts the oldest stored analysis, and finally trims rows from the tail.
+Set `SECRET_KEY` in the Vercel environment so every instance signs cookies
+with the same key; a deterministic fallback is used when it is not set.
+
+For a durable, cross-device analysis history, migrate the SQLite layer to a
+managed database before using the app with real student data.
 
 ## Tests
 
@@ -134,7 +144,9 @@ python -m unittest discover -s scripts -p "test_system.py" -v
 ```
 
 It covers single predictions, input validation, clean and unclean dataset
-uploads, missing columns, invalid file types, dashboard data, and CSV export.
+uploads, missing columns, invalid file types, dashboard data, CSV export,
+session-cookie persistence, the cookie size budget, and the dashboard's
+preview-card empty state.
 
 ## Main routes
 
@@ -168,3 +180,9 @@ with data you are authorized to process, and do not expose this development
 server publicly. The built-in Flask server runs in debug mode; production use
 requires a production WSGI server, debug mode disabled, HTTPS, persistent
 database storage, and appropriate access controls.
+
+Because analyses are mirrored into the browser's signed session cookie, the
+prediction rows for the current session are stored in the browser itself. The
+cookie is signed but not encrypted, so anyone with access to the browser's
+cookies can read the stored prediction values. Do not use the cookie-backed
+session for sensitive student records.
