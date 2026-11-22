@@ -323,6 +323,72 @@ class GradePathTestSuite(unittest.TestCase):
             self.assertIn("volunteering", row)
             self.assertEqual(row["predicted_grade"], "B")
 
+    def test_17_csv_export_prefers_the_database_copy_when_the_session_is_trimmed(self):
+        """Verify a trimmed session payload does not truncate the CSV export.
+
+        The session cookie may only hold a subset of the rows, but the CSV
+        export should still contain every prediction row while the database
+        copy for the same analysis is reachable.
+        """
+        file_path = os.path.join(TEST_DATA_DIR, "type1_clean.csv")
+        with open(file_path, "rb") as f:
+            data = {"dataset": (f, "type1_clean.csv")}
+            response = self.client.post(
+                "/upload", data=data, content_type="multipart/form-data"
+            )
+        analysis_id = response.get_json()["analysis_id"]
+
+        # Shrink the session payload so it really only holds a few rows.
+        with self.client.session_transaction() as sess:
+            entries = sess.get(SESSION_ANALYSES_KEY, [])
+            entry = entries[0]
+            rows = unpack_predictions(entry["rows"], entry["fields"])
+            entry["rows"] = pack_predictions(rows[:5], entry["fields"])
+            entry["meta"]["truncated"] = True
+            entry["meta"]["rows_stored"] = 5
+            sess[SESSION_ANALYSES_KEY] = entries
+
+        # The session copy holds fewer rows than the database copy.
+        db_rows = database.get_predictions_by_analysis_id(analysis_id)
+        self.assertEqual(len(db_rows), 60)
+        with mock.patch.object(
+            database, "get_predictions_by_analysis_id", return_value=db_rows
+        ) as mocked:
+            dl_res = self.client.get(f"/download/{analysis_id}.csv")
+        self.assertEqual(dl_res.status_code, 200)
+        mocked.assert_called_once_with(analysis_id)
+
+        lines = dl_res.data.decode("utf-8").strip().splitlines()
+        self.assertEqual(len(lines), 61)  # header + all 60 student rows
+
+    def test_18_csv_export_falls_back_to_the_trimmed_session_copy(self):
+        """Verify the export still works when the database copy is gone."""
+        file_path = os.path.join(TEST_DATA_DIR, "type1_clean.csv")
+        with open(file_path, "rb") as f:
+            data = {"dataset": (f, "type1_clean.csv")}
+            response = self.client.post(
+                "/upload", data=data, content_type="multipart/form-data"
+            )
+        analysis_id = response.get_json()["analysis_id"]
+
+        # Shrink the session payload so it really only holds a few rows.
+        with self.client.session_transaction() as sess:
+            entries = sess.get(SESSION_ANALYSES_KEY, [])
+            entry = entries[0]
+            rows = unpack_predictions(entry["rows"], entry["fields"])
+            entry["rows"] = pack_predictions(rows[:5], entry["fields"])
+            entry["meta"]["truncated"] = True
+            entry["meta"]["rows_stored"] = 5
+            sess[SESSION_ANALYSES_KEY] = entries
+
+        with mock.patch.object(database, "get_analysis_by_id", return_value=None):
+            dl_res = self.client.get(f"/download/{analysis_id}.csv")
+
+        self.assertEqual(dl_res.status_code, 200)
+        lines = dl_res.data.decode("utf-8").strip().splitlines()
+        self.assertEqual(len(lines), 6)  # header + 5 trimmed student rows
+        self.assertIn("PredictedGPA", lines[0])
+
     def test_16_unpack_restores_placeholder_columns_for_every_row(self):
         """Verify reduced payloads restore dropped columns on all rows."""
         fields = [

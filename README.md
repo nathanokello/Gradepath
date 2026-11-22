@@ -146,7 +146,7 @@ python -m unittest discover -s scripts -p "test_system.py" -v
 It covers single predictions, input validation, clean and unclean dataset
 uploads, missing columns, invalid file types, dashboard data, CSV export,
 session-cookie persistence, the cookie size budget, and the dashboard's
-preview-card empty state.
+preview-card empty state. The suite includes 18 focused tests.
 
 ## Main routes
 

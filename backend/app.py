@@ -111,6 +111,37 @@ def _resolve_analysis(analysis_id):
     return analysis, database.get_predictions_by_analysis_id(analysis_id)
 
 
+def _resolve_analysis_for_export(analysis_id):
+    """
+    Returns (metadata, prediction_rows) for a CSV export.
+
+    The session copy wins over the database copy. On Vercel every instance
+    keeps its own SQLite file with its own auto-increment sequence, so the
+    same numeric id can point at a completely different upload on another
+    instance. The browser's own session copy is therefore authoritative and
+    the database is only used as a fallback.
+
+    The one exception is a session payload that was trimmed to fit the cookie
+    budget. When the matching database row is still reachable it holds every
+    prediction row, so the export uses it instead of the trimmed subset. The
+    filename is compared as well so an id collision on another instance can
+    never pull in a different dataset.
+    """
+    stored = load_analysis(session, analysis_id)
+    if stored is None:
+        return _resolve_analysis(analysis_id)
+
+    meta, rows = stored
+    if not meta.get("truncated"):
+        return meta, rows
+
+    analysis = database.get_analysis_by_id(analysis_id)
+    if not analysis or analysis.get("filename") != meta.get("filename"):
+        return meta, rows
+
+    return analysis, database.get_predictions_by_analysis_id(analysis_id)
+
+
 def _analysis_index():
     """
     Returns the list shown in the "reopen past analysis" dropdown.
@@ -455,7 +486,7 @@ def download_csv(analysis_id):
     """
     Streams predictions for an analysis as a downloadable CSV.
     """
-    analysis, predictions = _resolve_analysis(analysis_id)
+    analysis, predictions = _resolve_analysis_for_export(analysis_id)
     if not analysis:
         return "Analysis not found", 404
 
