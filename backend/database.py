@@ -80,7 +80,7 @@ def insert_analysis(metadata, predictions_rows):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    created_at = metadata.get("created_at") or datetime.now().strftime("%Y-%m-%d %H:%M")
 
     cursor.execute("""
         INSERT INTO analyses (

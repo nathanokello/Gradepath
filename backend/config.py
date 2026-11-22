@@ -88,3 +88,63 @@ MODEL_METRICS = {
 # Upload constraints
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 Megabytes
 ALLOWED_EXTENSIONS = {".csv", ".xlsx"}
+
+# ---------------------------------------------------------------------------
+# Session / cookie-backed persistence settings
+#
+# On Vercel every serverless instance gets its own ephemeral SQLite file in
+# /tmp, so an upload written by one instance is invisible to the next request.
+# To keep the dashboard populated, the analysis payload is mirrored into the
+# Flask signed-session cookie, which travels with the browser.
+# ---------------------------------------------------------------------------
+
+# The signing key must be identical on every instance, otherwise cookies
+# signed by one instance cannot be verified by another. Prefer the SECRET_KEY
+# environment variable; the constant below is a deterministic fallback so the
+# app still works on an unclaimed Vercel project.
+SECRET_KEY = os.environ.get("SECRET_KEY") or (
+    "gradepath-static-session-key-3f9a1c7e5b2d8046f1a9c3e7d5b08126"
+)
+
+# Maximum size (bytes) of the encoded session cookie payload. Browsers cap a
+# single cookie at roughly 4096 bytes, so stay comfortably below that.
+SESSION_COOKIE_MAX_BYTES = 3800
+
+# How long a browser keeps the stored analyses.
+SESSION_LIFETIME_DAYS = 7
+
+# Key under which the analysis payloads are kept in the Flask session.
+SESSION_ANALYSES_KEY = "gradepath_analyses"
+
+# Every field of a prediction row, in the order used by the CSV encoding.
+FULL_PREDICTION_FIELDS = [
+    "student_row",
+    "study_time",
+    "absences",
+    "tutoring",
+    "parental_support",
+    "parental_education",
+    "extracurricular",
+    "sports",
+    "music",
+    "volunteering",
+    "predicted_gpa",
+    "predicted_grade",
+    "actual_gpa",
+    "actual_grade",
+]
+
+# Fields kept when the full set does not fit inside the cookie budget. These
+# are exactly the columns the dashboard renders; the remaining ones are
+# exported as empty strings so the CSV schema stays stable.
+REDUCED_PREDICTION_FIELDS = [
+    "student_row",
+    "study_time",
+    "absences",
+    "tutoring",
+    "parental_support",
+    "predicted_gpa",
+    "predicted_grade",
+    "actual_gpa",
+    "actual_grade",
+]

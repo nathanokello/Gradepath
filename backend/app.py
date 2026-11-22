@@ -7,10 +7,11 @@ import os
 import sys
 import io
 import csv
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from flask import (
-    Flask, render_template, request, jsonify, redirect, url_for, Response
+    Flask, render_template, request, jsonify, redirect, url_for, Response, session
 )
 
 # Anchor paths to project root
@@ -23,17 +24,27 @@ if BACKEND_DIR not in sys.path:
 
 try:
     from backend.config import (
-        VALID_RANGES, FEATURE_COLUMNS, MAX_FILE_SIZE, ALLOWED_EXTENSIONS
+        VALID_RANGES, FEATURE_COLUMNS, MAX_FILE_SIZE, ALLOWED_EXTENSIONS,
+        SECRET_KEY, SESSION_LIFETIME_DAYS, SESSION_ANALYSES_KEY
     )
     from backend.clean_data import clean_dataframe
     from backend.model_service import model_service
+    from backend.session_store import (
+        store_analysis, load_analysis, list_stored_analyses,
+        latest_stored_analysis_id
+    )
     import backend.database as database
 except ImportError:
     from config import (
-        VALID_RANGES, FEATURE_COLUMNS, MAX_FILE_SIZE, ALLOWED_EXTENSIONS
+        VALID_RANGES, FEATURE_COLUMNS, MAX_FILE_SIZE, ALLOWED_EXTENSIONS,
+        SECRET_KEY, SESSION_LIFETIME_DAYS, SESSION_ANALYSES_KEY
     )
     from clean_data import clean_dataframe
     from model_service import model_service
+    from session_store import (
+        store_analysis, load_analysis, list_stored_analyses,
+        latest_stored_analysis_id
+    )
     import database
 
 # Point template_folder and static_folder to the project root directories
@@ -50,8 +61,69 @@ if os.environ.get("VERCEL"):
     app.add_url_rule("/static/<path:filename>", endpoint="static", build_only=True)
 app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
+# Session configuration: the signed cookie carries the analysis payloads so
+# they survive across serverless instances that do not share a database.
+app.secret_key = SECRET_KEY
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=SESSION_LIFETIME_DAYS)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Secure cookies only make sense behind HTTPS; enabling them unconditionally
+# would break the plain-HTTP local development server.
+app.config["SESSION_COOKIE_SECURE"] = bool(os.environ.get("VERCEL"))
+
 # Initialize the SQLite database on startup
 database.init_db()
+
+
+def _cookie_size(session_dict):
+    """
+    Returns the exact number of bytes the session cookie would occupy.
+
+    Flask signs the session with itsdangerous, so the real size is only known
+    after serialization. Measuring the signed payload accounts for zlib
+    compression, base64 expansion and the appended timestamp/signature.
+    """
+    serializer = app.session_interface.get_signing_serializer(app)
+    if serializer is None:
+        return len(str(session_dict).encode("utf-8"))
+    return len(serializer.dumps(dict(session_dict)))
+
+
+def _resolve_analysis(analysis_id):
+    """
+    Returns (metadata, prediction_rows) for an analysis.
+
+    The session copy wins over the database copy. On Vercel every instance
+    keeps its own SQLite file with its own auto-increment sequence, so the
+    same numeric id can point at a completely different upload on another
+    instance. The browser's own session copy is therefore authoritative and
+    the database is only used as a fallback.
+    """
+    stored = load_analysis(session, analysis_id)
+    if stored is not None:
+        meta, rows = stored
+        return meta, rows
+
+    analysis = database.get_analysis_by_id(analysis_id)
+    if not analysis:
+        return None, None
+
+    return analysis, database.get_predictions_by_analysis_id(analysis_id)
+
+
+def _analysis_index():
+    """
+    Returns the list shown in the "reopen past analysis" dropdown.
+
+    Session entries come first (newest first) followed by the database rows,
+    without duplicating ids that are already present in the session.
+    """
+    entries = list_stored_analyses(session)
+    seen = {entry.get("id") for entry in entries}
+    for item in database.get_all_analyses():
+        if item.get("id") not in seen:
+            entries.append(item)
+    return entries
 
 
 @app.route("/")
@@ -215,6 +287,7 @@ def upload_file():
     # Prepare database metadata
     metadata = {
         "filename": filename,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "data_type": data_type,
         "rows_in": report["rows_in"],
         "rows_out": report["rows_out"],
@@ -257,6 +330,18 @@ def upload_file():
     # Save to SQLite
     analysis_id = database.insert_analysis(metadata, predictions_rows)
 
+    # Mirror the analysis into the signed session cookie. The database copy
+    # lives on the instance that handled the upload and is not visible to the
+    # other instances serving the next request on Vercel.
+    session.permanent = True
+    store_analysis(
+        session,
+        analysis_id,
+        dict(metadata, id=analysis_id),
+        predictions_rows,
+        measure=_cookie_size,
+    )
+
     return jsonify({
         "success": True,
         "analysis_id": analysis_id,
@@ -278,7 +363,7 @@ def dashboard_latest():
     """
     Redirects to the latest analysis or shows an empty dashboard if none exist.
     """
-    latest_id = database.get_latest_analysis_id()
+    latest_id = latest_stored_analysis_id(session) or database.get_latest_analysis_id()
     if latest_id:
         return redirect(url_for("dashboard_detail", analysis_id=latest_id))
     return render_template("dashboard.html", analysis=None, active_page="dashboard")
@@ -289,12 +374,11 @@ def dashboard_detail(analysis_id):
     """
     Renders the dashboard for a specific analysis ID.
     """
-    analysis = database.get_analysis_by_id(analysis_id)
+    analysis, predictions = _resolve_analysis(analysis_id)
     if not analysis:
         return redirect(url_for("dashboard_latest"))
 
-    predictions = database.get_predictions_by_analysis_id(analysis_id)
-    all_analyses = database.get_all_analyses()
+    all_analyses = _analysis_index()
 
     # Students at risk (predicted letter grade D or F)
     at_risk_count = sum(1 for p in predictions if p["predicted_grade"] in ("D", "F"))
@@ -314,11 +398,9 @@ def api_dashboard_data(analysis_id):
     """
     Returns pre-aggregated JSON chart data for Plotly on the client.
     """
-    analysis = database.get_analysis_by_id(analysis_id)
+    analysis, predictions = _resolve_analysis(analysis_id)
     if not analysis:
         return jsonify({"error": "Analysis not found"}), 404
-
-    predictions = database.get_predictions_by_analysis_id(analysis_id)
 
     predicted_gpas = [p["predicted_gpa"] for p in predictions]
     absences = [p["absences"] for p in predictions]
@@ -373,11 +455,9 @@ def download_csv(analysis_id):
     """
     Streams predictions for an analysis as a downloadable CSV.
     """
-    analysis = database.get_analysis_by_id(analysis_id)
+    analysis, predictions = _resolve_analysis(analysis_id)
     if not analysis:
         return "Analysis not found", 404
-
-    predictions = database.get_predictions_by_analysis_id(analysis_id)
 
     output = io.StringIO()
     writer = csv.writer(output)

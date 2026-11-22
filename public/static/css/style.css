@@ -862,3 +862,143 @@ table.pred-table td.strong {
   color: var(--accent);
 }
 
+/* ==========================================================================
+   Dashboard empty state: dashed preview cards
+   ========================================================================== */
+
+.ghost-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 800px) {
+  .ghost-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ghost-card {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: rgba(241, 247, 245, 0.015);
+  padding: 16px;
+  color: var(--text-faint);
+}
+
+.ghost-card .ghost-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: rgba(241, 247, 245, 0.22);
+  letter-spacing: 0.04em;
+}
+
+.ghost-card .ghost-label {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 3px;
+}
+
+.ghost-card .ghost-hint {
+  font-size: 11.5px;
+  color: rgba(241, 247, 245, 0.22);
+  margin-top: 6px;
+}
+
+.ghost-chart,
+.ghost-table {
+  grid-column: span 1;
+}
+
+.ghost-card.ghost-table {
+  grid-column: 1 / -1;
+}
+
+.ghost-card .ghost-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(241, 247, 245, 0.30);
+  margin-bottom: 14px;
+}
+
+.ghost-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+  padding: 0 4px;
+}
+
+.ghost-bars span {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+  background: rgba(241, 247, 245, 0.07);
+  border: 1px dashed rgba(241, 247, 245, 0.14);
+}
+
+.ghost-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: rgba(241, 247, 245, 0.20);
+  font-family: var(--font-mono);
+}
+
+.ghost-rows {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 10px 8px;
+  min-height: 120px;
+}
+
+.ghost-row-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: rgba(241, 247, 245, 0.24);
+}
+
+.ghost-row-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(241, 247, 245, 0.07);
+  border: 1px dashed rgba(241, 247, 245, 0.14);
+}
+
+.ghost-table-head,
+.ghost-table-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  font-size: 12px;
+}
+
+.ghost-table-head {
+  color: rgba(241, 247, 245, 0.26);
+  font-weight: 600;
+  font-size: 11.5px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-strong);
+}
+
+.ghost-table-row {
+  padding: 9px 0;
+  border-bottom: 1px dashed rgba(241, 247, 245, 0.08);
+  color: rgba(241, 247, 245, 0.22);
+  font-family: var(--font-mono);
+}
+
+.ghost-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ghost-cta-note {
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+

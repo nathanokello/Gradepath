@@ -12,7 +12,9 @@ Covers all criteria specified in Section 12 of projectinfo.md:
 import os
 import sys
 import io
+import json
 import unittest
+from unittest import mock
 import pandas as pd
 
 # Ensure root workspace directory is on sys.path
@@ -22,6 +24,11 @@ if BASE_DIR not in sys.path:
 
 from backend.app import app
 from backend import database
+from backend.session_store import (
+    pack_predictions, unpack_predictions, store_analysis, load_analysis,
+    default_measure
+)
+from backend.config import SESSION_ANALYSES_KEY, FULL_PREDICTION_FIELDS
 
 TEST_DATA_DIR = os.path.join(BASE_DIR, "test_data")
 
@@ -211,6 +218,140 @@ class GradePathTestSuite(unittest.TestCase):
         self.assertEqual(dl_res.status_code, 200)
         self.assertEqual(dl_res.mimetype, "text/csv")
         self.assertIn(b"PredictedGPA", dl_res.data)
+
+    def test_12_upload_mirrors_analysis_into_session_cookie(self):
+        """Verify an upload is mirrored into the signed session cookie."""
+        file_path = os.path.join(TEST_DATA_DIR, "type2_clean.csv")
+        with open(file_path, "rb") as f:
+            data = {"dataset": (f, "type2_clean.csv")}
+            response = self.client.post(
+                "/upload", data=data, content_type="multipart/form-data"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        analysis_id = response.get_json()["analysis_id"]
+
+        with self.client.session_transaction() as sess:
+            entries = sess.get(SESSION_ANALYSES_KEY, [])
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0]["id"], analysis_id)
+            self.assertEqual(entries[0]["fields"], FULL_PREDICTION_FIELDS)
+            self.assertEqual(entries[0]["meta"]["filename"], "type2_clean.csv")
+
+    def test_13_dashboard_survives_a_database_without_the_analysis(self):
+        """Verify the dashboard renders from the session when the DB has no copy.
+
+        This mirrors the Vercel behaviour where the next request can land on an
+        instance whose ephemeral SQLite never saw the upload.
+        """
+        file_path = os.path.join(TEST_DATA_DIR, "type1_clean.csv")
+        with open(file_path, "rb") as f:
+            data = {"dataset": (f, "type1_clean.csv")}
+            response = self.client.post(
+                "/upload", data=data, content_type="multipart/form-data"
+            )
+        analysis_id = response.get_json()["analysis_id"]
+
+        with mock.patch.object(database, "get_analysis_by_id", return_value=None), \
+             mock.patch.object(database, "get_latest_analysis_id", return_value=None):
+            dash_res = self.client.get(f"/dashboard/{analysis_id}")
+            self.assertEqual(dash_res.status_code, 200)
+            self.assertIn(b"Visualization dashboard", dash_res.data)
+            self.assertIn(b"type1_clean.csv", dash_res.data)
+
+            api_res = self.client.get(f"/api/dashboard/{analysis_id}")
+            self.assertEqual(api_res.status_code, 200)
+            self.assertEqual(len(api_res.get_json()["predicted_gpas"]), 60)
+
+            dl_res = self.client.get(f"/download/{analysis_id}.csv")
+            self.assertEqual(dl_res.status_code, 200)
+            self.assertIn(b"PredictedGPA", dl_res.data)
+
+    def test_14_empty_dashboard_shows_preview_cards_not_an_upload_panel(self):
+        """Verify the dashboard empty state reads as analytics, not a second upload page."""
+        fresh_client = app.test_client()
+        fresh_client.testing = True
+
+        with mock.patch.object(database, "get_latest_analysis_id", return_value=None), \
+             mock.patch.object(database, "get_all_analyses", return_value=[]):
+            response = fresh_client.get("/dashboard")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode("utf-8")
+        self.assertIn("ghost-grid", body)
+        self.assertIn("ghost-card", body)
+        self.assertNotIn("No datasets have been analyzed", body)
+        self.assertNotIn("Upload a Dataset", body)
+        # A single, quiet call to action is still allowed.
+        self.assertIn("Analyze a dataset", body)
+
+    def test_15_store_analysis_downgrades_to_fit_the_cookie_budget(self):
+        """Verify oversized payloads are reduced and truncated instead of dropped."""
+        rows = []
+        for index in range(600):
+            rows.append({
+                "student_row": index + 1,
+                "study_time": 12.34,
+                "absences": index % 20,
+                "tutoring": index % 2,
+                "parental_support": index % 5,
+                "parental_education": index % 5,
+                "extracurricular": index % 2,
+                "sports": index % 2,
+                "music": index % 2,
+                "volunteering": index % 2,
+                "predicted_gpa": 3.21,
+                "predicted_grade": "B",
+                "actual_gpa": 3.10,
+                "actual_grade": "B",
+            })
+
+        session_data = {}
+        mode = store_analysis(session_data, 1, {"filename": "big.csv"}, rows)
+
+        self.assertIn(mode, ("reduced", "full"))
+        entries = session_data[SESSION_ANALYSES_KEY]
+        self.assertEqual(len(entries), 1)
+        self.assertLessEqual(default_measure(session_data), 3800)
+
+        meta, restored = load_analysis(session_data, 1)
+        self.assertTrue(restored)
+        # Every restored row keeps the same column shape, including the
+        # columns that were dropped when the payload was downgraded.
+        for row in restored:
+            self.assertIn("parental_education", row)
+            self.assertIn("volunteering", row)
+            self.assertEqual(row["predicted_grade"], "B")
+
+    def test_16_unpack_restores_placeholder_columns_for_every_row(self):
+        """Verify reduced payloads restore dropped columns on all rows."""
+        fields = [
+            "student_row", "study_time", "absences", "tutoring",
+            "parental_support", "predicted_gpa", "predicted_grade",
+        ]
+        rows = [
+            {
+                "student_row": i + 1,
+                "study_time": 5.0,
+                "absences": 1,
+                "tutoring": 0,
+                "parental_support": 2,
+                "predicted_gpa": 2.5,
+                "predicted_grade": "C",
+            }
+            for i in range(4)
+        ]
+
+        blob = pack_predictions(rows, fields)
+        restored = unpack_predictions(blob, fields)
+
+        self.assertEqual(len(restored), 4)
+        for row in restored:
+            self.assertEqual(row["parental_education"], "")
+            self.assertEqual(row["music"], "")
+            self.assertEqual(row["student_row"], row["student_row"])
+            self.assertIsInstance(row["study_time"], float)
+            self.assertIsInstance(row["absences"], int)
 
 
 if __name__ == "__main__":

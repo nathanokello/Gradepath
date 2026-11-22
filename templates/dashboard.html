@@ -4,20 +4,74 @@
 
 {% block content %}
 {% if not analysis %}
-<!-- Empty State when no analyses exist yet in database -->
+<!-- Empty State: dashed preview cards, not a second upload page -->
 <div class="page-head">
   <h1>Performance Dashboard</h1>
-  <p>No dataset analyses found yet.</p>
+  <p>Analytics appear here once a dataset has been analyzed.</p>
 </div>
 
-<div class="panel" style="text-align: center; padding: 60px 20px;">
-  <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">No datasets have been analyzed</div>
-  <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">
-    Upload a class roster (CSV or XLSX) to see automated predictions and interactive cohort analytics.
-  </p>
+<div class="ghost-grid">
+  <div class="ghost-card ghost-kpi">
+    <div class="ghost-value">&mdash;&mdash;</div>
+    <div class="ghost-label">Average predicted GPA</div>
+    <div class="ghost-hint">Cohort metric</div>
+  </div>
+
+  <div class="ghost-card ghost-kpi">
+    <div class="ghost-value">&mdash;&mdash;</div>
+    <div class="ghost-label">Students analyzed</div>
+    <div class="ghost-hint">Row count</div>
+  </div>
+
+  <div class="ghost-card ghost-kpi">
+    <div class="ghost-value">&mdash;&mdash;</div>
+    <div class="ghost-label">Students at risk</div>
+    <div class="ghost-hint">Predicted D or F</div>
+  </div>
+
+  <div class="ghost-card ghost-chart">
+    <div class="ghost-panel-title">GPA distribution</div>
+    <div class="ghost-bars">
+      <span style="height: 38%"></span>
+      <span style="height: 62%"></span>
+      <span style="height: 88%"></span>
+      <span style="height: 54%"></span>
+      <span style="height: 30%"></span>
+      <span style="height: 70%"></span>
+      <span style="height: 44%"></span>
+      <span style="height: 22%"></span>
+    </div>
+    <div class="ghost-axis"><span>1.0</span><span>2.0</span><span>3.0</span><span>4.0</span></div>
+  </div>
+
+  <div class="ghost-card ghost-chart">
+    <div class="ghost-panel-title">Grade breakdown</div>
+    <div class="ghost-rows">
+      <span class="ghost-row-label">A</span><span class="ghost-row-bar" style="width: 72%"></span>
+      <span class="ghost-row-label">B</span><span class="ghost-row-bar" style="width: 88%"></span>
+      <span class="ghost-row-label">C</span><span class="ghost-row-bar" style="width: 54%"></span>
+      <span class="ghost-row-label">D</span><span class="ghost-row-bar" style="width: 32%"></span>
+      <span class="ghost-row-label">F</span><span class="ghost-row-bar" style="width: 18%"></span>
+    </div>
+  </div>
+
+  <div class="ghost-card ghost-table">
+    <div class="ghost-panel-title">Per-student predictions</div>
+    <div class="ghost-table-head">
+      <span>Student</span><span>Absences</span><span>Predicted GPA</span><span>Grade</span>
+    </div>
+    <div class="ghost-table-row"><span>#0000</span><span>&mdash;</span><span>&mdash;</span><span>&mdash;</span></div>
+    <div class="ghost-table-row"><span>#0001</span><span>&mdash;</span><span>&mdash;</span><span>&mdash;</span></div>
+    <div class="ghost-table-row"><span>#0002</span><span>&mdash;</span><span>&mdash;</span><span>&mdash;</span></div>
+    <div class="ghost-table-row"><span>#0003</span><span>&mdash;</span><span>&mdash;</span><span>&mdash;</span></div>
+  </div>
+</div>
+
+<div class="ghost-cta">
   <a href="{{ url_for('upload_page') }}" class="btn btn-primary">
-    Upload a Dataset &rarr;
+    Analyze a dataset &rarr;
   </a>
+  <span class="ghost-cta-note">Results stay in this browser session for seven days.</span>
 </div>
 
 {% else %}
@@ -153,7 +207,12 @@
       <div>
         <div class="panel-title">Per-student predictions</div>
         <div class="panel-sub" style="margin-bottom: 0;">
-          Showing all {{ predictions|length }} student rows from this dataset.
+          {% if analysis.truncated %}
+            Showing {{ predictions|length }} of {{ analysis.rows_out }} student rows
+            (trimmed to fit the browser session).
+          {% else %}
+            Showing all {{ predictions|length }} student rows from this dataset.
+          {% endif %}
         </div>
       </div>
       <a href="{{ url_for('download_csv', analysis_id=analysis.id) }}" class="btn btn-ghost">
