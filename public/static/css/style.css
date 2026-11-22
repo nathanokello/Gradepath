@@ -141,6 +141,16 @@ nav.sidebar-nav {
   nav.sidebar-nav {
     flex-direction: row;
     gap: 6px;
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: flex-end;
+    overflow-x: auto;
+  }
+
+  .nav-item {
+    width: auto;
+    flex: none;
+    white-space: nowrap;
   }
 }
 
@@ -920,6 +930,130 @@ table.pred-table td.strong {
   font-weight: 600;
   color: rgba(241, 247, 245, 0.30);
   margin-bottom: 14px;
+}
+
+/* About page architecture overview */
+.about-overview {
+  border-color: rgba(0, 217, 130, 0.18);
+  background: linear-gradient(135deg, rgba(0, 217, 130, 0.07), var(--surface));
+}
+
+.about-eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font: 600 10px/1.4 var(--font-mono);
+  letter-spacing: 0.1em;
+}
+
+.about-copy {
+  max-width: 76ch;
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.about-flow {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-step {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(4, 16, 13, 0.32);
+}
+
+.about-step-number {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 600 11px var(--font-mono);
+}
+
+.about-step h3 {
+  margin: 1px 0 4px;
+  font-size: 13px;
+}
+
+.about-step p {
+  max-width: 80ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.about-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.about-columns .panel {
+  margin-bottom: 18px;
+}
+
+.about-list {
+  display: grid;
+  gap: 11px;
+  margin: 14px 0 0;
+  padding-left: 19px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.about-pros .about-list li::marker {
+  color: var(--accent);
+}
+
+.about-cons .about-list li::marker {
+  color: #e8ad69;
+}
+
+.about-notice {
+  padding: 15px 18px;
+  border: 1px solid rgba(232, 173, 105, 0.3);
+  border-radius: var(--radius-md);
+  background: rgba(232, 173, 105, 0.07);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.about-notice strong {
+  color: #f0c48e;
+}
+
+@media (max-width: 700px) {
+  .about-columns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .about-step {
+    grid-template-columns: 32px 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .about-step-number {
+    width: 30px;
+    height: 30px;
+  }
 }
 
 .ghost-bars {

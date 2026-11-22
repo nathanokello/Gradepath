@@ -165,6 +165,14 @@ def home():
     return render_template("index.html", active_page="predict")
 
 
+@app.route("/about")
+def about():
+    """
+    Explains the application architecture and its operational trade-offs.
+    """
+    return render_template("about.html", active_page="about")
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     """

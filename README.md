@@ -122,9 +122,11 @@ Vercel functions use temporary writable storage. GradePath places SQLite there
 by default when running on Vercel, so the database copy of an analysis is **not
 durable** and may disappear between function instances or restarts. To keep the
 dashboard populated anyway, every upload is also mirrored into Flask's signed
-session cookie, which travels with the browser. The session copy is what the
-dashboard, chart API and CSV export read first, so a just-uploaded analysis
-stays visible across instances.
+session cookie, which travels with the browser. The dashboard and chart API
+read that session copy so a just-uploaded analysis stays visible across
+instances. If the cookie copy had to be trimmed, CSV export uses the matching
+database copy for the full rows when available and otherwise exports the
+session's retained rows.
 
 The cookie has a strict size budget (3,800 bytes). When a payload does not
 fit, GradePath automatically drops the columns the dashboard never renders,
@@ -146,13 +148,15 @@ python -m unittest discover -s scripts -p "test_system.py" -v
 It covers single predictions, input validation, clean and unclean dataset
 uploads, missing columns, invalid file types, dashboard data, CSV export,
 session-cookie persistence, the cookie size budget, and the dashboard's
-preview-card empty state. The suite includes 18 focused tests.
+preview-card empty state, plus the About page architecture and trade-offs.
+The suite includes 19 focused tests.
 
 ## Main routes
 
 | Method | Route | Purpose |
 |---|---|---|
 | `GET` | `/` | Single-student prediction form |
+| `GET` | `/about` | Explain architecture, benefits, and limitations |
 | `POST` | `/predict` | Return one prediction as JSON |
 | `GET`, `POST` | `/upload` | Upload and analyze a dataset |
 | `GET` | `/dashboard` | Open the latest analysis |

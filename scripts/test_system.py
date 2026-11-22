@@ -44,6 +44,17 @@ class GradePathTestSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Predict a student", response.data)
 
+    def test_02_about_page_explains_architecture_and_tradeoffs(self):
+        """Verify the About page is reachable and describes the real storage model."""
+        response = self.client.get("/about")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Architecture and data flow", response.data)
+        self.assertIn(b"Pros", response.data)
+        self.assertIn(b"Cons and limitations", response.data)
+        self.assertIn(b"signed session cookie", response.data)
+        self.assertIn(b"not encrypted", response.data)
+        self.assertIn(b'aria-current="page"', response.data)
+
     def test_02_predict_valid_student(self):
         """Verify POST /predict returns GPA, grade, range, and feature importances."""
         payload = {

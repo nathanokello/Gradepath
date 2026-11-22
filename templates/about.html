@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}About — GradePath{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <h1>About GradePath</h1>
+  <p>
+    How the app turns student information into GPA estimates, where analysis
+    data is kept, and what the current architecture is good at.
+  </p>
+</header>
+
+<section class="panel about-overview">
+  <p class="about-eyebrow">PROJECT OVERVIEW</p>
+  <h2 class="panel-title">A lightweight prediction and analysis app</h2>
+  <p class="about-copy">
+    GradePath is a Python Flask application. It accepts nine study, attendance,
+    and support-related features, then uses a bundled, pre-trained Random
+    Forest model to estimate GPA and a letter grade. The model runs inference
+    only; it is not trained or updated by this app.
+  </p>
+</section>
+
+<section class="panel" aria-labelledby="architecture-title">
+  <h2 class="panel-title" id="architecture-title">Architecture and data flow</h2>
+  <p class="panel-sub">The same Flask backend serves the pages and prediction APIs.</p>
+
+  <ol class="about-flow">
+    <li class="about-step">
+      <span class="about-step-number">01</span>
+      <div>
+        <h3>Browser interface</h3>
+        <p>Jinja-rendered HTML, CSS, and JavaScript provide the prediction form, dataset upload, and dashboard. Plotly.js renders charts in the browser.</p>
+      </div>
+    </li>
+    <li class="about-step">
+      <span class="about-step-number">02</span>
+      <div>
+        <h3>Flask application</h3>
+        <p>Routes validate single-student inputs and accept CSV or XLSX uploads up to 5 MB. Uploaded files are processed in memory, not saved as source files.</p>
+      </div>
+    </li>
+    <li class="about-step">
+      <span class="about-step-number">03</span>
+      <div>
+        <h3>Data cleaning</h3>
+        <p>Batch uploads are checked against the required feature schema. Invalid or missing values are filled, duplicate feature rows are removed, and a cleaning summary is produced.</p>
+      </div>
+    </li>
+    <li class="about-step">
+      <span class="about-step-number">04</span>
+      <div>
+        <h3>Pre-trained model</h3>
+        <p>The bundled scikit-learn Random Forest estimates GPA. Grade bands convert that value to a letter grade; the dashboard displays the results and summary charts.</p>
+      </div>
+    </li>
+    <li class="about-step">
+      <span class="about-step-number">05</span>
+      <div>
+        <h3>Analysis storage</h3>
+        <p>Locally, analysis records are stored in SQLite. On Vercel, SQLite is temporary and instance-local, so a bounded copy is also kept in the browser's signed session cookie to make recent results available across requests.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section class="about-columns" aria-label="Architecture advantages and limitations">
+  <article class="panel about-pros">
+    <p class="about-eyebrow">WHAT WORKS WELL</p>
+    <h2 class="panel-title">Pros</h2>
+    <ul class="about-list">
+      <li>One Python app handles validation, cleaning, prediction, and dashboard data.</li>
+      <li>The pre-trained model is loaded for inference; app users do not need a model-training pipeline.</li>
+      <li>Uploaded source files are processed in memory instead of being kept as files.</li>
+      <li>The browser session helps preserve the latest analysis when Vercel routes requests to different instances.</li>
+    </ul>
+  </article>
+
+  <article class="panel about-cons">
+    <p class="about-eyebrow">CURRENT TRADE-OFFS</p>
+    <h2 class="panel-title">Cons and limitations</h2>
+    <ul class="about-list">
+      <li>Vercel's SQLite copy is temporary and not shared, so it is not a durable history store.</li>
+      <li>The session cookie is signed, not encrypted. Its analysis values—including predictions and any supplied actual GPA or grade—are readable to anyone with access to that browser's cookies.</li>
+      <li>Browser storage is size-limited; large analyses may be reduced to fit. Session history is not shared across browsers or devices.</li>
+      <li>Predictions are estimates from the existing training data, not guarantees or a substitute for educator judgment.</li>
+      <li>The current app has no user accounts or access-control layer for shared deployments.</li>
+    </ul>
+  </article>
+</section>
+
+<aside class="about-notice" aria-label="Data handling notice">
+  <strong>Before using real student records:</strong>
+  move session payloads to encrypted, access-controlled storage, use a durable
+  shared database, and configure production secrets and access controls.
+</aside>
+{% endblock %}
